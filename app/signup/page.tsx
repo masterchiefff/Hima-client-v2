@@ -9,15 +9,19 @@ import { MsisdnInput } from "@/components/msisdn-input"
 import { Check } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { LoggingPopup } from "@/components/logging-popup"
 
-export default function Signup() {
+export default function Auth() {
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [phoneNumber, setPhoneNumber] = useState("")
   const [otp, setOtp] = useState("")
   const [error, setError] = useState("")
+  const [showLoggingPopup, setShowLoggingPopup] = useState(false)
+  const [registrationComplete, setRegistrationComplete] = useState(false)
+  const [isLoginMode, setIsLoginMode] = useState(false)
 
-  // Motorcycle details
+  // Motorcycle details (only for signup)
   const [motorcycleDetails, setMotorcycleDetails] = useState({
     type: "",
     model: "",
@@ -25,6 +29,23 @@ export default function Signup() {
     year: "",
     engineCapacity: "",
   })
+
+  const registrationLogs = [
+    "Checking for existing registration...",
+    "Validating motorcycle data...",
+    "Creating new wallet...",
+    "Updating user data...",
+    "Validating encryption key...",
+    "Encrypting private key...",
+    "Saving user to database...",
+  ]
+
+  const loginLogs = [
+    "Verifying user credentials...",
+    "Validating OTP...",
+    "Retrieving user data...",
+    "Authenticating session...",
+  ]
 
   const API_BASE_URL = "http://localhost:5000/api/v1/auth"
 
@@ -36,7 +57,6 @@ export default function Signup() {
 
     try {
       setError("")
-      // Convert to +254 format for backend
       const formattedPhone = `+${phoneNumber}`
       await axios.post(`${API_BASE_URL}/request-otp`, { phone: formattedPhone })
       setStep(2)
@@ -63,10 +83,14 @@ export default function Signup() {
         phone: formattedPhone,
         otp,
       })
-      // Store JWT token
       localStorage.setItem("token", response.data.token)
       localStorage.setItem("phoneNumber", formattedPhone)
-      setStep(3)
+
+      if (isLoginMode) {
+        setShowLoggingPopup(true)
+      } else {
+        setStep(3)
+      }
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message || "Invalid OTP")
@@ -78,8 +102,20 @@ export default function Signup() {
     }
   }
 
+  const handleRegistrationComplete = () => {
+    setRegistrationComplete(true)
+    localStorage.setItem("phoneNumber", phoneNumber)
+    
+    if (!isLoginMode) {
+      localStorage.setItem("motorcycleDetails", JSON.stringify(motorcycleDetails))
+    }
+
+    setTimeout(() => {
+      router.push("/premiums")
+    }, 1500)
+  }
+
   const handleRegisterMotorcycle = async () => {
-    // Validate required fields
     if (!motorcycleDetails.type || !motorcycleDetails.licensePlate || !motorcycleDetails.engineCapacity) {
       setError("Please fill in all required fields (Type, License Plate, Engine Capacity)")
       return
@@ -89,7 +125,6 @@ export default function Signup() {
       setError("")
       const formattedPhone = `+${phoneNumber}`
       const year = motorcycleDetails.year ? parseInt(motorcycleDetails.year) : undefined
-      // Map engineCapacity to numeric value for backend
       const engineCapacityMap: { [key: string]: number } = {
         "under50": 50,
         "50-125": 125,
@@ -110,12 +145,9 @@ export default function Signup() {
         },
       })
 
-      // Store motorcycle details and wallet info
       localStorage.setItem("motorcycleDetails", JSON.stringify(motorcycleDetails))
       localStorage.setItem("walletAddress", response.data.wallet.address)
-
-      // Navigate to premiums
-      router.push("/premiums")
+      setShowLoggingPopup(true)
     } catch (err) {
       if (axios.isAxiosError(err)) {
         setError(err.response?.data?.message || "Failed to complete registration")
@@ -139,6 +171,14 @@ export default function Signup() {
       <div className="glow-effect glow-yellow"></div>
       <div className="glow-effect glow-purple"></div>
 
+      {showLoggingPopup && (
+        <LoggingPopup
+          logs={isLoginMode ? loginLogs : registrationLogs}
+          onComplete={handleRegistrationComplete}
+          isComplete={registrationComplete}
+        />
+      )}
+
       <div className="mobile-screen">
         <div className="flex justify-center mb-8 mt-4">
           <div className="flex items-center gap-2">
@@ -153,6 +193,30 @@ export default function Signup() {
           </div>
         </div>
 
+        <div className="flex justify-center mb-6">
+          <Button
+            variant={isLoginMode ? "outline" : "default"}
+            onClick={() => {
+              setIsLoginMode(false)
+              setStep(1)
+              setError("")
+            }}
+            className="mr-2"
+          >
+            Sign Up
+          </Button>
+          <Button
+            variant={isLoginMode ? "default" : "outline"}
+            onClick={() => {
+              setIsLoginMode(true)
+              setStep(1)
+              setError("")
+            }}
+          >
+            Log In
+          </Button>
+        </div>
+
         <div className="flex items-center justify-center mb-8">
           <div className="flex items-center w-full max-w-xs">
             <div className={`progress-step ${step >= 1 ? "active" : ""} ${step > 1 ? "completed" : ""}`}>
@@ -162,16 +226,22 @@ export default function Signup() {
             <div className={`progress-step ${step >= 2 ? "active" : ""} ${step > 2 ? "completed" : ""}`}>
               {step > 2 ? <Check className="h-4 w-4" /> : "2"}
             </div>
-            <div className={`progress-line ${step >= 3 ? "active" : ""}`}></div>
-            <div className={`progress-step ${step >= 3 ? "active" : ""}`}>3</div>
+            {!isLoginMode && (
+              <>
+                <div className={`progress-line ${step >= 3 ? "active" : ""}`}></div>
+                <div className={`progress-step ${step >= 3 ? "active" : ""}`}>3</div>
+              </>
+            )}
           </div>
         </div>
 
         <div className="flex-1 flex flex-col">
           {step === 1 && (
             <>
-              <h1 className="text-2xl font-bold mb-2">Welcome to Hima</h1>
-              <p className="text-gray-400 mb-6">Enter your phone number to get started</p>
+              <h1 className="text-2xl font-bold mb-2">{isLoginMode ? "Log In to Hima" : "Welcome to Hima"}</h1>
+              <p className="text-gray-400 mb-6">
+                {isLoginMode ? "Enter your phone number to log in" : "Enter your phone number to get started"}
+              </p>
 
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -218,7 +288,7 @@ export default function Signup() {
             </>
           )}
 
-          {step === 3 && (
+          {step === 3 && !isLoginMode && (
             <>
               <h1 className="text-2xl font-bold mb-2">Register Your Motorcycle</h1>
               <p className="text-gray-400 mb-6">Please provide your motorcycle details</p>

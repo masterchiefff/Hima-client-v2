@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import axios from "axios"
 import { Card } from "@/components/ui/card"
 import { UserAvatar } from "@/components/user-avatar"
 import { BottomNavigation } from "@/components/bottom-navigation"
@@ -29,54 +30,33 @@ export default function Premiums() {
   const router = useRouter()
   const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly" | "annually">("weekly")
   const [viewMode, setViewMode] = useState<"premiums" | "payments">("premiums")
-  const [premiums, setPremiums] = useState<Premium[]>([
-    {
-      id: "basic-accident",
-      name: "Basic Accident",
-      description: "Essential coverage for accidents while riding",
-      basePrice: 50, // Weekly base price
-      coverages: [
-        { id: "personal-accident", name: "Personal Accident", included: true },
-        { id: "medical-expenses", name: "Medical Expenses (Limited)", included: true },
-        { id: "third-party-injury", name: "Third Party Injury", included: false },
-        { id: "bike-damage", name: "Motorcycle Damage", included: false },
-        { id: "theft-protection", name: "Theft Protection", included: false },
-      ],
-    },
-    {
-      id: "comprehensive",
-      name: "Comprehensive",
-      description: "Full coverage for your motorcycle and yourself",
-      basePrice: 150, // Weekly base price
-      coverages: [
-        { id: "personal-accident", name: "Personal Accident", included: true },
-        { id: "medical-expenses", name: "Medical Expenses (Full)", included: true },
-        { id: "third-party-injury", name: "Third Party Injury", included: true },
-        { id: "bike-damage", name: "Motorcycle Damage", included: true },
-        { id: "theft-protection", name: "Theft Protection", included: true },
-      ],
-    },
-    {
-      id: "third-party",
-      name: "Third Party",
-      description: "Coverage for damage to others and their property",
-      basePrice: 75, // Weekly base price
-      coverages: [
-        { id: "personal-accident", name: "Personal Accident", included: false },
-        { id: "medical-expenses", name: "Medical Expenses", included: false },
-        { id: "third-party-injury", name: "Third Party Injury", included: true },
-        { id: "bike-damage", name: "Motorcycle Damage", included: false },
-        { id: "theft-protection", name: "Theft Protection", included: false },
-      ],
-    },
-  ])
+  const [premiums, setPremiums] = useState<Premium[]>([])
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Check if user is logged in
     const token = localStorage.getItem("token")
     if (!token) {
       router.push("/signup")
+      return
     }
+
+    // Fetch premiums from the backend
+    const fetchPremiums = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/v1/policies/get-premiums", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setPremiums(response.data.premiums)
+      } catch (err) {
+        if (axios.isAxiosError(err)) {
+          setError(err.response?.data?.message || "Failed to fetch premiums")
+        } else {
+          setError("Failed to fetch premiums")
+        }
+      }
+    }
+
+    fetchPremiums()
   }, [router])
 
   const calculatePrice = (basePrice: number, frequency: string): number => {
@@ -140,6 +120,12 @@ export default function Premiums() {
                 </TabsList>
               </Tabs>
             </div>
+
+            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+            {premiums.length === 0 && !error && (
+              <p className="text-gray-400 text-sm mb-4">Loading premiums...</p>
+            )}
 
             <div className="space-y-6">
               {premiums.map((premium) => (
