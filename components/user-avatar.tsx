@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import axios from "axios"
 import { User } from "lucide-react"
 import {
   DropdownMenu,
@@ -21,12 +22,36 @@ export function UserAvatar() {
     return "User"
   })
 
-  const handleLogout = () => {
-    localStorage.removeItem("token")
-    localStorage.removeItem("phoneNumber")
-    localStorage.removeItem("selectedPremium")
-    localStorage.removeItem("motorcycleDetails")
-    router.push("/signup")
+  const API_BASE_URL = "http://localhost:5000/api/v1"
+
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem("token")
+      if (token) {
+        await axios.post(
+          `${API_BASE_URL}/logout`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        )
+      }
+    } catch (err) {
+      if (err && typeof err === "object" && "response" in err) {
+        // @ts-ignore
+        console.error("Logout error:", err.response?.data?.message || err.message)
+      } else {
+        console.error("Logout error:", (err as Error).message || err)
+      }
+    } finally {
+      // Clear localStorage
+      localStorage.removeItem("token")
+      localStorage.removeItem("phoneNumber")
+      localStorage.removeItem("selectedPremium")
+      localStorage.removeItem("motorcycleDetails")
+      localStorage.removeItem("walletAddress")
+
+      // Redirect to signup page
+      router.push("/signup")
+    }
   }
 
   return (

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import axios from "axios"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { MsisdnInput } from "@/components/msisdn-input"
@@ -25,41 +26,105 @@ export default function Signup() {
     engineCapacity: "",
   })
 
-  const handleRequestOTP = () => {
+  const API_BASE_URL = "http://localhost:5000/api/v1/auth"
+
+  const handleRequestOTP = async () => {
     if (!phoneNumber || !phoneNumber.match(/^254\d{9}$/)) {
       setError("Please enter a valid phone number (e.g., 7XXXXXXXX)")
       return
     }
 
-    setError("")
-    setStep(2)
-    console.log("OTP sent to", phoneNumber, "- Use 123456 to verify")
+    try {
+      setError("")
+      // Convert to +254 format for backend
+      const formattedPhone = `+${phoneNumber}`
+      await axios.post(`${API_BASE_URL}/request-otp`, { phone: formattedPhone })
+      setStep(2)
+      console.log("OTP sent to", formattedPhone)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message || "Failed to request OTP")
+      } else {
+        setError("Failed to request OTP")
+      }
+    }
   }
 
-  const handleVerifyOTP = () => {
-    if (otp !== "123456") {
-      setError("Invalid OTP. Use 123456 for demo.")
+  const handleVerifyOTP = async () => {
+    if (!otp || otp.length !== 6) {
+      setError("Please enter a 6-digit OTP")
       return
     }
 
-    setError("")
-    setStep(3)
+    try {
+      setError("")
+      const formattedPhone = `+${phoneNumber}`
+      const response = await axios.post(`${API_BASE_URL}/verify-otp`, {
+        phone: formattedPhone,
+        otp,
+      })
+      // Store JWT token
+      localStorage.setItem("token", response.data.token)
+      localStorage.setItem("phoneNumber", formattedPhone)
+      setStep(3)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message || "Invalid OTP")
+      } else if (err instanceof Error) {
+        setError(err.message || "Invalid OTP")
+      } else {
+        setError("Invalid OTP")
+      }
+    }
   }
 
-  const handleRegisterMotorcycle = () => {
-    // Validate motorcycle details
-    if (!motorcycleDetails.type || !motorcycleDetails.licensePlate) {
-      setError("Please fill in all required fields")
+  const handleRegisterMotorcycle = async () => {
+    // Validate required fields
+    if (!motorcycleDetails.type || !motorcycleDetails.licensePlate || !motorcycleDetails.engineCapacity) {
+      setError("Please fill in all required fields (Type, License Plate, Engine Capacity)")
       return
     }
 
-    // Set mock token and user data
-    localStorage.setItem("token", "mock-jwt-token")
-    localStorage.setItem("phoneNumber", phoneNumber)
-    localStorage.setItem("motorcycleDetails", JSON.stringify(motorcycleDetails))
+    try {
+      setError("")
+      const formattedPhone = `+${phoneNumber}`
+      const year = motorcycleDetails.year ? parseInt(motorcycleDetails.year) : undefined
+      // Map engineCapacity to numeric value for backend
+      const engineCapacityMap: { [key: string]: number } = {
+        "under50": 50,
+        "50-125": 125,
+        "126-250": 250,
+        "251-500": 500,
+        "over500": 501,
+      }
+      const engineCapacity = engineCapacityMap[motorcycleDetails.engineCapacity] || 125
 
-    // Navigate to premiums
-    router.push("/premiums")
+      const response = await axios.post(`${API_BASE_URL}/register-complete`, {
+        phone: formattedPhone,
+        motorcycle: {
+          type: motorcycleDetails.type,
+          licensePlate: motorcycleDetails.licensePlate,
+          model: motorcycleDetails.model || undefined,
+          year,
+          engineCapacity,
+        },
+      })
+
+      // Store motorcycle details and wallet info
+      localStorage.setItem("motorcycleDetails", JSON.stringify(motorcycleDetails))
+      localStorage.setItem("walletAddress", response.data.wallet.address)
+
+      // Navigate to premiums
+      router.push("/premiums")
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message || "Failed to complete registration")
+      } else if (err instanceof Error) {
+        setError(err.message || "Failed to complete registration")
+      } else {
+        setError("Failed to complete registration")
+      }
+    }
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -113,6 +178,8 @@ export default function Signup() {
                   <label className="text-sm text-gray-400">Phone Number</label>
                   <MsisdnInput value={phoneNumber} onChange={setPhoneNumber} placeholder="7XXXXXXXX" error={error} />
                 </div>
+
+                {error && <p className="text-red-500 text-sm">{error}</p>}
 
                 <Button onClick={handleRequestOTP} className="w-full bg-primary text-black hover:bg-primary/90">
                   Request OTP
