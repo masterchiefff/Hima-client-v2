@@ -121,151 +121,153 @@ export default function Purchase() {
       <div className="glow-effect glow-yellow"></div>
       <div className="glow-effect glow-purple"></div>
 
-      <FixedHeader title="Payment Insurance" onBack={() => router.push("/premiums")} />
+      <div className="mobile-screen">
+        <FixedHeader title="Payment Insurance" onBack={() => router.push("/premiums")} />
 
-      {showSuccessPopup && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/70">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-sm w-full mx-4 border border-gray-700 shadow-lg">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="h-8 w-8 text-white"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+        {showSuccessPopup && (
+          <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/70">
+            <div className="bg-gray-800 rounded-lg p-6 max-w-sm w-full mx-4 border border-gray-700 shadow-lg">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center mb-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-8 w-8 text-white"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold mb-2">Payment Successful!</h2>
+                <p className="text-gray-400 mb-4">
+                  You have successfully purchased {premium?.name} insurance for KES {premium?.price}.
+                </p>
+                <div className="gradient-card w-full rounded-lg p-3 mb-4">
+                  <div className="text-black font-medium">Your policy is now active</div>
+                </div>
+                <Button
+                  onClick={() => router.push("/policies")}
+                  className="w-full bg-primary text-black hover:bg-primary/90"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                </svg>
+                  View My Policies
+                </Button>
               </div>
-              <h2 className="text-2xl font-bold mb-2">Payment Successful!</h2>
-              <p className="text-gray-400 mb-4">
-                You have successfully purchased {premium?.name} insurance for KES {premium?.price}.
-              </p>
-              <div className="gradient-card w-full rounded-lg p-3 mb-4">
-                <div className="text-black font-medium">Your policy is now active</div>
-              </div>
-              <Button
-                onClick={() => router.push("/policies")}
-                className="w-full bg-primary text-black hover:bg-primary/90"
-              >
-                View My Policies
-              </Button>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="mobile-screen pt-16">
-        <div className="gradient-card rounded-lg p-4 mb-6">
-          <div className="text-sm text-black/70">Insurance package</div>
-          <div className="flex justify-between items-center">
-            <div className="text-2xl font-bold text-black break-words mr-2">{premium.name}</div>
-            <div className="text-2xl font-bold text-black whitespace-nowrap">KES {premium.price}</div>
+        <div className="mt-4">
+          <div className="gradient-card rounded-lg p-4 mb-6">
+            <div className="text-sm text-black/70">Insurance package</div>
+            <div className="flex justify-between items-center">
+              <div className="text-2xl font-bold text-black break-words mr-2">{premium.name}</div>
+              <div className="text-2xl font-bold text-black whitespace-nowrap">KES {premium.price}</div>
+            </div>
+            <div className="text-sm text-black/70 mt-1">Billed {premium.period.toLowerCase()}</div>
           </div>
-          <div className="text-sm text-black/70 mt-1">Billed {premium.period.toLowerCase()}</div>
-        </div>
 
-        <h2 className="text-xl font-bold mb-4">Coverage Details</h2>
+          <h2 className="text-xl font-bold mb-4">Coverage Details</h2>
 
-        <Card className="bg-gray-800 border-gray-700 p-4 mb-4">
-          <div className="space-y-3">
-            {premium.coverages?.map((coverage) => (
-              <div key={coverage.id} className="flex items-start">
-                {coverage.included ? (
-                  <Check className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
-                ) : (
-                  <div className="h-5 w-5 border border-gray-600 rounded-full mr-2 mt-0.5 flex-shrink-0" />
-                )}
-                <div>
-                  <div className={`font-medium break-words ${coverage.included ? "" : "text-gray-500"}`}>
-                    {coverage.name}
-                  </div>
-                  {coverage.name === "Personal Accident" && coverage.included && (
-                    <p className="text-sm text-gray-400">
-                      Coverage for injuries sustained while riding your motorcycle
-                    </p>
+          <Card className="bg-gray-800 border-gray-700 p-4 mb-4">
+            <div className="space-y-3">
+              {premium.coverages?.map((coverage) => (
+                <div key={coverage.id} className="flex items-start">
+                  {coverage.included ? (
+                    <Check className="h-5 w-5 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                  ) : (
+                    <div className="h-5 w-5 border border-gray-600 rounded-full mr-2 mt-0.5 flex-shrink-0" />
                   )}
-                  {coverage.name === "Medical Expenses" && coverage.included && (
-                    <p className="text-sm text-gray-400">
-                      {premium.name.includes("Basic")
-                        ? "Basic coverage for medical expenses up to KES 20,000"
-                        : "Full coverage for medical expenses up to KES 50,000"}
-                    </p>
-                  )}
-                  {coverage.name === "Third Party Injury" && coverage.included && (
-                    <p className="text-sm text-gray-400">Coverage for injuries caused to third parties</p>
-                  )}
-                  {coverage.name === "Motorcycle Damage" && coverage.included && (
-                    <p className="text-sm text-gray-400">
-                      Coverage for damage to your motorcycle in case of an accident
-                    </p>
-                  )}
-                  {coverage.name === "Theft Protection" && coverage.included && (
-                    <p className="text-sm text-gray-400">Coverage in case your motorcycle is stolen</p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <h2 className="text-xl font-bold mb-4">Motorcycle Information</h2>
-
-        <Card className="bg-gray-800 border-gray-700 p-4 mb-4">
-          <div className="space-y-4">
-            {motorcycleDetails && (
-              <>
-                <div className="data-row">
-                  <div className="data-label">Vehicle type</div>
-                  <div className="data-value">
-                    {motorcycleDetails.type.charAt(0).toUpperCase() + motorcycleDetails.type.slice(1)}
+                  <div>
+                    <div className={`font-medium break-words ${coverage.included ? "" : "text-gray-500"}`}>
+                      {coverage.name}
+                    </div>
+                    {coverage.name === "Personal Accident" && coverage.included && (
+                      <p className="text-sm text-gray-400">
+                        Coverage for injuries sustained while riding your motorcycle
+                      </p>
+                    )}
+                    {coverage.name === "Medical Expenses" && coverage.included && (
+                      <p className="text-sm text-gray-400">
+                        {premium.name.includes("Basic")
+                          ? "Basic coverage for medical expenses up to KES 20,000"
+                          : "Full coverage for medical expenses up to KES 50,000"}
+                      </p>
+                    )}
+                    {coverage.name === "Third Party Injury" && coverage.included && (
+                      <p className="text-sm text-gray-400">Coverage for injuries caused to third parties</p>
+                    )}
+                    {coverage.name === "Motorcycle Damage" && coverage.included && (
+                      <p className="text-sm text-gray-400">
+                        Coverage for damage to your motorcycle in case of an accident
+                      </p>
+                    )}
+                    {coverage.name === "Theft Protection" && coverage.included && (
+                      <p className="text-sm text-gray-400">Coverage in case your motorcycle is stolen</p>
+                    )}
                   </div>
                 </div>
+              ))}
+            </div>
+          </Card>
 
-                <div className="data-row">
-                  <div className="data-label">License plate</div>
-                  <div className="data-value">{motorcycleDetails.licensePlate}</div>
-                </div>
+          <h2 className="text-xl font-bold mb-4">Motorcycle Information</h2>
 
-                {motorcycleDetails.model && (
+          <Card className="bg-gray-800 border-gray-700 p-4 mb-4">
+            <div className="space-y-4">
+              {motorcycleDetails && (
+                <>
                   <div className="data-row">
-                    <div className="data-label">Model</div>
-                    <div className="data-value">{motorcycleDetails.model}</div>
+                    <div className="data-label">Vehicle type</div>
+                    <div className="data-value">
+                      {motorcycleDetails.type.charAt(0).toUpperCase() + motorcycleDetails.type.slice(1)}
+                    </div>
                   </div>
-                )}
 
-                <div className="data-row">
-                  <div className="data-label">Engine capacity</div>
-                  <div className="data-value">
-                    {motorcycleDetails.engineCapacity
-                      .replace("-", " to ")
-                      .replace("under", "Under ")
-                      .replace("over", "Over ")}
-                    cc
+                  <div className="data-row">
+                    <div className="data-label">License plate</div>
+                    <div className="data-value">{motorcycleDetails.licensePlate}</div>
                   </div>
-                </div>
-              </>
-            )}
 
-            <div className="data-row">
-              <div className="data-label">Vehicle owner</div>
-              <div className="data-value">+{phoneNumber}</div>
+                  {motorcycleDetails.model && (
+                    <div className="data-row">
+                      <div className="data-label">Model</div>
+                      <div className="data-value">{motorcycleDetails.model}</div>
+                    </div>
+                  )}
+
+                  <div className="data-row">
+                    <div className="data-label">Engine capacity</div>
+                    <div className="data-value">
+                      {motorcycleDetails.engineCapacity
+                        .replace("-", " to ")
+                        .replace("under", "Under ")
+                        .replace("over", "Over ")}
+                      cc
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="data-row">
+                <div className="data-label">Vehicle owner</div>
+                <div className="data-value">+{phoneNumber}</div>
+              </div>
             </div>
-          </div>
-        </Card>
+          </Card>
 
-        <Card className="bg-gray-800 border-gray-700 p-4 mb-6">
-          <div className="data-row">
-            <div className="data-label">Insurance company</div>
-            <div className="data-value">Hima</div>
-          </div>
-        </Card>
+          <Card className="bg-gray-800 border-gray-700 p-4 mb-6">
+            <div className="data-row">
+              <div className="data-label">Insurance company</div>
+              <div className="data-value">Hima</div>
+            </div>
+          </Card>
 
-        <div className="mt-auto">
-          <Button onClick={handlePurchase} className="w-full bg-primary text-black hover:bg-primary/90">
-            Buy Now
-          </Button>
+          <div className="mt-auto">
+            <Button onClick={handlePurchase} className="w-full bg-primary text-black hover:bg-primary/90">
+              Buy Now
+            </Button>
+          </div>
         </div>
       </div>
 

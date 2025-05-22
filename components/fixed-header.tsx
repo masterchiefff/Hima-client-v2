@@ -14,7 +14,7 @@ interface FixedHeaderProps {
 
 export function FixedHeader({ title, onBack, showBackButton = true, rightElement }: FixedHeaderProps) {
   return (
-    <div className="fixed top-0 left-0 right-0 z-20 bg-gray-950 border-b border-gray-800 max-w-md mx-auto">
+    <div className="bg-gray-950 border-b border-gray-800 w-full">
       <div className="flex items-center justify-between p-4">
         <div className="flex items-center">
           {showBackButton && (
@@ -22,7 +22,7 @@ export function FixedHeader({ title, onBack, showBackButton = true, rightElement
               <ArrowLeft className="h-5 w-5" />
             </Button>
           )}
-          <h1 className="text-xl font-bold truncate max-w-[200px]">{title}</h1>
+          <h1 className="text-xl font-bold break-words">{title}</h1>
         </div>
         {rightElement}
       </div>

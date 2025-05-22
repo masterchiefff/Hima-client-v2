@@ -120,11 +120,6 @@
   padding-bottom: 80px;
 }
 
-/* Ensure fixed headers don't hide content */
-.header-padding {
-  padding-top: 70px;
-}
-
 /* Make sure all text is visible */
 .text-truncate {
   overflow: visible;

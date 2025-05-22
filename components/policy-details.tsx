@@ -67,7 +67,7 @@ export function PolicyDetails({ policy, onBack }: PolicyDetailsProps) {
     <div>
       <FixedHeader title="Policy Details" onBack={onBack} />
 
-      <div className="pt-16">
+      <div>
         <div className="gradient-card rounded-lg p-4 mb-6">
           <div className="flex justify-between items-start">
             <div>
