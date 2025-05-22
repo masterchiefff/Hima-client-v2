@@ -1,0 +1,154 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 98%;
+    --card: 240 10% 3.9%;
+    --card-foreground: 0 0% 98%;
+    --popover: 240 10% 3.9%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 60 100% 50%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 270 100% 70%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 15.9%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+.gradient-card {
+  background: linear-gradient(90deg, #f7e84f 0%, #b388ff 100%);
+}
+
+.gradient-yellow {
+  background: linear-gradient(90deg, #f7e84f 0%, #f7e84f 100%);
+}
+
+.gradient-purple {
+  background: linear-gradient(90deg, #b388ff 0%, #b388ff 100%);
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #f7e84f 0%, #b388ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+.mobile-container {
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  background-color: #121212;
+}
+
+.mobile-screen {
+  padding: 16px;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 80px; /* Increased padding to ensure content is visible above bottom nav */
+  overflow-y: auto;
+}
+
+.glow-effect {
+  position: absolute;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: rgba(247, 232, 79, 0.3);
+  filter: blur(80px);
+  z-index: 0;
+}
+
+.glow-yellow {
+  bottom: 10%;
+  left: 10%;
+}
+
+.glow-purple {
+  top: 20%;
+  right: 10%;
+  background: rgba(179, 136, 255, 0.3);
+}
+
+.progress-step {
+  @apply flex items-center justify-center w-8 h-8 rounded-full border border-gray-700 text-sm font-medium;
+}
+
+.progress-step.active {
+  @apply bg-primary text-black border-primary;
+}
+
+.progress-step.completed {
+  @apply bg-green-500 text-white border-green-500;
+}
+
+.progress-line {
+  @apply flex-1 h-0.5 bg-gray-700;
+}
+
+.progress-line.active {
+  @apply bg-primary;
+}
+
+/* Ensure content scrolls properly with fixed bottom navigation */
+.content-container {
+  overflow-y: auto;
+  padding-bottom: 80px;
+}
+
+/* Ensure fixed headers don't hide content */
+.header-padding {
+  padding-top: 70px;
+}
+
+/* Make sure all text is visible */
+.text-truncate {
+  overflow: visible;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+/* Ensure all data in tables and lists is visible */
+.data-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.data-label {
+  flex: 1;
+  min-width: 120px;
+  color: #9ca3af;
+  font-size: 0.875rem;
+}
+
+.data-value {
+  flex: 2;
+  text-align: right;
+  word-break: break-word;
+}
