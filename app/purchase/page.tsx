@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Check } from "lucide-react"
 import { BottomNavigation } from "@/components/bottom-navigation"
 import { FixedHeader } from "@/components/fixed-header"
+import { toast, Toaster } from "sonner"
 
 interface Coverage {
   id: string
@@ -29,7 +30,7 @@ interface MotorcycleDetails {
   model: string
   licensePlate: string
   year: string
-  engineCapacity: string | number // Allow both string and number
+  engineCapacity: string | number
 }
 
 export default function Purchase() {
@@ -38,19 +39,16 @@ export default function Purchase() {
   const [phoneNumber, setPhoneNumber] = useState("")
   const [motorcycleDetails, setMotorcycleDetails] = useState<MotorcycleDetails | null>(null)
   const [showSuccessPopup, setShowSuccessPopup] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isFetchingUser, setIsFetchingUser] = useState(true)
 
   useEffect(() => {
-    // Check if user is logged in
     const token = localStorage.getItem("token")
     if (!token) {
       router.push("/signup")
       return
     }
 
-    // Get selected premium
     const selectedPremium = localStorage.getItem("selectedPremium")
     if (!selectedPremium) {
       router.push("/premiums")
@@ -59,7 +57,6 @@ export default function Purchase() {
 
     setPremium(JSON.parse(selectedPremium))
 
-    // Fetch user data from the backend
     const fetchUserData = async () => {
       try {
         setIsFetchingUser(true)
@@ -69,21 +66,18 @@ export default function Purchase() {
 
         setPhoneNumber(response.data.phone)
         if (response.data.motorcycle) {
-          // Ensure engineCapacity is a string
           const motorcycle = {
             ...response.data.motorcycle,
             engineCapacity: String(response.data.motorcycle.engineCapacity),
           }
           setMotorcycleDetails(motorcycle)
-          // Update localStorage with normalized data
           localStorage.setItem("motorcycleDetails", JSON.stringify(motorcycle))
         }
 
-        // Update localStorage with latest phone number
         localStorage.setItem("phoneNumber", response.data.phone)
       } catch (err) {
         console.error('Failed to fetch user data:', err)
-        // Fallback to localStorage
+        toast.error("Failed to fetch user data. Using cached data if available.") // Error as toast
         const storedPhoneNumber = localStorage.getItem("phoneNumber")
         if (storedPhoneNumber) {
           setPhoneNumber(storedPhoneNumber)
@@ -92,7 +86,6 @@ export default function Purchase() {
         const storedMotorcycleDetails = localStorage.getItem("motorcycleDetails")
         if (storedMotorcycleDetails) {
           const motorcycle = JSON.parse(storedMotorcycleDetails)
-          // Ensure engineCapacity is a string
           motorcycle.engineCapacity = String(motorcycle.engineCapacity)
           setMotorcycleDetails(motorcycle)
         }
@@ -104,14 +97,89 @@ export default function Purchase() {
     fetchUserData()
   }, [router])
 
+  const pollPolicyStatus = async (orderID: string) => {
+    const token = localStorage.getItem("token")
+    const maxAttempts = 12
+    const interval = 5000
+    let attempts = 0
+
+    const checkStatus = async () => {
+      try {
+        const response = await axios.get(
+          `http://localhost:5000/api/v1/policies/status/${orderID}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        )
+
+        const { status, transactionHash, explorerLink } = response.data
+
+        if (status === "Active") {
+          const existingPolicies = JSON.parse(localStorage.getItem("policies") || "[]")
+          const newPolicy = {
+            id: orderID,
+            name: premium!.name,
+            price: premium!.price * 0.99,
+            purchaseDate: new Date().toISOString(),
+            status: "Active",
+            period: premium!.period,
+            coverages: premium!.coverages,
+            motorcycleDetails,
+            transactionHash,
+            explorerLink,
+          }
+
+          localStorage.setItem("policies", JSON.stringify([...existingPolicies, newPolicy]))
+
+          const existingPayments = JSON.parse(localStorage.getItem("paymentHistory") || "[]")
+          const newPayment = {
+            id: `payment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
+            policyId: orderID,
+            policyName: premium!.name,
+            amount: premium!.price,
+            date: new Date().toISOString(),
+            status: "successful",
+            method: "M-Pesa",
+          }
+
+          localStorage.setItem("paymentHistory", JSON.stringify([newPayment, ...existingPayments]))
+
+          toast.dismiss() // Clear all toasts on success
+          setShowSuccessPopup(true)
+          setIsLoading(false)
+          setTimeout(() => {
+            router.push("/policies")
+          }, 3000)
+        } else if (status === "Failed") {
+          toast.error("Payment failed. Please try again.") // Error as toast
+          setIsLoading(false)
+        } else {
+          // Status is Pending, continue polling
+          attempts++
+          if (attempts < maxAttempts) {
+            setTimeout(checkStatus, interval)
+          } else {
+            toast.error("Payment confirmation timed out. Please check your policies or try again.") // Error as toast
+            setIsLoading(false)
+          }
+        }
+      } catch (err) {
+        toast.error("Failed to check payment status. Please try again.") // Error as toast
+        setIsLoading(false)
+      }
+    }
+
+    checkStatus()
+  }
+
   const handlePurchase = async () => {
     if (!premium || !phoneNumber) {
-      setError("Missing premium or phone number")
+      toast.error("Missing premium or phone number") // Error as toast
       return
     }
 
     setIsLoading(true)
-    setError(null)
+    toast.dismiss() // Clear any existing toasts before new purchase
 
     try {
       const token = localStorage.getItem("token")
@@ -128,51 +196,22 @@ export default function Purchase() {
         }
       )
 
-      // Add to policies
-      const existingPolicies = JSON.parse(localStorage.getItem("policies") || "[]")
-      const newPolicy = {
-        id: response.data.orderID,
-        name: premium.name,
-        price: premium.price * 0.99, // Apply small discount for display
-        purchaseDate: new Date().toISOString(),
-        status: "Active",
-        period: premium.period,
-        coverages: premium.coverages,
-        motorcycleDetails: motorcycleDetails,
-        transactionHash: response.data.transaction.txHash,
-        explorerLink: response.data.transaction.explorerLink,
+      if (response.status === 202) {
+        // STK Push initiated, show as neutral Sonner toast
+        toast.message("Please complete the M-Pesa payment on your phone.", {
+          duration: 10000, // Show for 10 seconds
+        })
+        const orderID = response.data.orderID
+        pollPolicyStatus(orderID)
+      } else {
+        throw new Error(response.data.message || "Unexpected response from server")
       }
-
-      localStorage.setItem("policies", JSON.stringify([...existingPolicies, newPolicy]))
-
-      // Add initial payment to payment history
-      const existingPayments = JSON.parse(localStorage.getItem("paymentHistory") || "[]")
-      const newPayment = {
-        id: `payment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        policyId: response.data.orderID,
-        policyName: premium.name,
-        amount: premium.price,
-        date: new Date().toISOString(),
-        status: "successful",
-        method: "M-Pesa",
-      }
-
-      localStorage.setItem("paymentHistory", JSON.stringify([newPayment, ...existingPayments]))
-
-      // Show success popup
-      setShowSuccessPopup(true)
-
-      // Automatically redirect after 3 seconds
-      setTimeout(() => {
-        router.push("/policies")
-      }, 3000)
     } catch (err) {
       if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || "Failed to process payment")
+        toast.error(err.response?.data?.message || "Failed to initiate payment") // Error as toast
       } else {
-        setError("Failed to process payment")
+        toast.error("Failed to initiate payment") // Error as toast
       }
-    } finally {
       setIsLoading(false)
     }
   }
@@ -191,6 +230,7 @@ export default function Purchase() {
 
   return (
     <div className="mobile-container">
+      <Toaster richColors position="top-center" /> {/* Sonner Toaster for all notifications */}
       <div className="glow-effect glow-yellow"></div>
       <div className="glow-effect glow-purple"></div>
 
@@ -331,8 +371,6 @@ export default function Purchase() {
               <div className="data-value">Hima</div>
             </div>
           </Card>
-
-          {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
           <div className="mt-auto">
             <Button
