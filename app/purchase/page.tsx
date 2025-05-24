@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import axios from "axios"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Check } from "lucide-react"
@@ -28,7 +29,7 @@ interface MotorcycleDetails {
   model: string
   licensePlate: string
   year: string
-  engineCapacity: string
+  engineCapacity: string | number // Allow both string and number
 }
 
 export default function Purchase() {
@@ -37,6 +38,9 @@ export default function Purchase() {
   const [phoneNumber, setPhoneNumber] = useState("")
   const [motorcycleDetails, setMotorcycleDetails] = useState<MotorcycleDetails | null>(null)
   const [showSuccessPopup, setShowSuccessPopup] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [isFetchingUser, setIsFetchingUser] = useState(true)
 
   useEffect(() => {
     // Check if user is logged in
@@ -55,28 +59,79 @@ export default function Purchase() {
 
     setPremium(JSON.parse(selectedPremium))
 
-    // Get phone number
-    const storedPhoneNumber = localStorage.getItem("phoneNumber")
-    if (storedPhoneNumber) {
-      setPhoneNumber(storedPhoneNumber)
+    // Fetch user data from the backend
+    const fetchUserData = async () => {
+      try {
+        setIsFetchingUser(true)
+        const response = await axios.get("http://localhost:5000/api/v1/auth/get-user", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+
+        setPhoneNumber(response.data.phone)
+        if (response.data.motorcycle) {
+          // Ensure engineCapacity is a string
+          const motorcycle = {
+            ...response.data.motorcycle,
+            engineCapacity: String(response.data.motorcycle.engineCapacity),
+          }
+          setMotorcycleDetails(motorcycle)
+          // Update localStorage with normalized data
+          localStorage.setItem("motorcycleDetails", JSON.stringify(motorcycle))
+        }
+
+        // Update localStorage with latest phone number
+        localStorage.setItem("phoneNumber", response.data.phone)
+      } catch (err) {
+        console.error('Failed to fetch user data:', err)
+        // Fallback to localStorage
+        const storedPhoneNumber = localStorage.getItem("phoneNumber")
+        if (storedPhoneNumber) {
+          setPhoneNumber(storedPhoneNumber)
+        }
+
+        const storedMotorcycleDetails = localStorage.getItem("motorcycleDetails")
+        if (storedMotorcycleDetails) {
+          const motorcycle = JSON.parse(storedMotorcycleDetails)
+          // Ensure engineCapacity is a string
+          motorcycle.engineCapacity = String(motorcycle.engineCapacity)
+          setMotorcycleDetails(motorcycle)
+        }
+      } finally {
+        setIsFetchingUser(false)
+      }
     }
 
-    // Get motorcycle details
-    const storedMotorcycleDetails = localStorage.getItem("motorcycleDetails")
-    if (storedMotorcycleDetails) {
-      setMotorcycleDetails(JSON.parse(storedMotorcycleDetails))
-    }
+    fetchUserData()
   }, [router])
 
-  const handlePurchase = () => {
-    // Simulate M-Pesa payment
-    const confirmed = window.confirm("Confirm M-Pesa payment of KES " + premium?.price + " for " + premium?.name + "?")
+  const handlePurchase = async () => {
+    if (!premium || !phoneNumber) {
+      setError("Missing premium or phone number")
+      return
+    }
 
-    if (confirmed && premium) {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const token = localStorage.getItem("token")
+      const response = await axios.post(
+        "http://localhost:5000/api/v1/policies/buy-insurance",
+        {
+          phone: phoneNumber,
+          amountKes: premium.price,
+          premiumId: premium.id,
+          duration: premium.period.toLowerCase(),
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      )
+
       // Add to policies
       const existingPolicies = JSON.parse(localStorage.getItem("policies") || "[]")
       const newPolicy = {
-        id: Date.now().toString(),
+        id: response.data.orderID,
         name: premium.name,
         price: premium.price * 0.99, // Apply small discount for display
         purchaseDate: new Date().toISOString(),
@@ -84,6 +139,8 @@ export default function Purchase() {
         period: premium.period,
         coverages: premium.coverages,
         motorcycleDetails: motorcycleDetails,
+        transactionHash: response.data.transaction.txHash,
+        explorerLink: response.data.transaction.explorerLink,
       }
 
       localStorage.setItem("policies", JSON.stringify([...existingPolicies, newPolicy]))
@@ -92,7 +149,7 @@ export default function Purchase() {
       const existingPayments = JSON.parse(localStorage.getItem("paymentHistory") || "[]")
       const newPayment = {
         id: `payment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
-        policyId: newPolicy.id,
+        policyId: response.data.orderID,
         policyName: premium.name,
         amount: premium.price,
         date: new Date().toISOString(),
@@ -109,11 +166,27 @@ export default function Purchase() {
       setTimeout(() => {
         router.push("/policies")
       }, 3000)
+    } catch (err) {
+      if (axios.isAxiosError(err)) {
+        setError(err.response?.data?.message || "Failed to process payment")
+      } else {
+        setError("Failed to process payment")
+      }
+    } finally {
+      setIsLoading(false)
     }
   }
 
-  if (!premium) {
-    return null
+  if (!premium || isFetchingUser) {
+    return (
+      <div className="mobile-container">
+        <div className="mobile-screen">
+          <FixedHeader title="Payment Insurance" onBack={() => router.push("/premiums")} />
+          <p className="text-gray-400 text-sm mt-4">Loading user data...</p>
+        </div>
+        <BottomNavigation />
+      </div>
+    )
   }
 
   return (
@@ -239,11 +312,7 @@ export default function Purchase() {
                   <div className="data-row">
                     <div className="data-label">Engine capacity</div>
                     <div className="data-value">
-                      {motorcycleDetails.engineCapacity
-                        .replace("-", " to ")
-                        .replace("under", "Under ")
-                        .replace("over", "Over ")}
-                      cc
+                      {String(motorcycleDetails.engineCapacity)} cc
                     </div>
                   </div>
                 </>
@@ -263,9 +332,15 @@ export default function Purchase() {
             </div>
           </Card>
 
+          {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
           <div className="mt-auto">
-            <Button onClick={handlePurchase} className="w-full bg-primary text-black hover:bg-primary/90">
-              Buy Now
+            <Button
+              onClick={handlePurchase}
+              className="w-full bg-primary text-black hover:bg-primary/90"
+              disabled={isLoading || isFetchingUser}
+            >
+              {isLoading ? "Processing..." : "Buy Now"}
             </Button>
           </div>
         </div>

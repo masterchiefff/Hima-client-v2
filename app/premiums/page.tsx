@@ -62,13 +62,13 @@ export default function Premiums() {
   const calculatePrice = (basePrice: number, frequency: string): number => {
     switch (frequency) {
       case "daily":
-        return Math.ceil(basePrice / 7) + 1 // Daily price with small markup for profit
+        return Math.ceil(basePrice / 7) + 2 - 9
       case "weekly":
-        return basePrice // Base price is weekly
+        return basePrice 
       case "monthly":
-        return Math.ceil(basePrice * 4 * 0.95) // Monthly with 5% discount but ensuring profit
+        return Math.ceil(basePrice * 4 * 0.95) 
       case "annually":
-        return Math.ceil(basePrice * 52 * 0.8) // Annual with 20% discount but ensuring profit
+        return Math.ceil(basePrice * 52 * 0.8) 
       default:
         return basePrice
     }
