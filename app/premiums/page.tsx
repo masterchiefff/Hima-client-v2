@@ -11,6 +11,7 @@ import { Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { PaymentHistory } from "@/components/payment-history"
+import { toast, Toaster } from "sonner"
 
 interface Coverage {
   id: string
@@ -26,12 +27,17 @@ interface Premium {
   coverages: Coverage[]
 }
 
+interface UserData {
+  phone: string
+  walletAddress: string | null
+}
+
 export default function Premiums() {
   const router = useRouter()
   const [frequency, setFrequency] = useState<"daily" | "weekly" | "monthly" | "annually">("weekly")
   const [viewMode, setViewMode] = useState<"premiums" | "payments">("premiums")
   const [premiums, setPremiums] = useState<Premium[]>([])
-  const [error, setError] = useState<string | null>(null)
+  const [userData, setUserData] = useState<UserData | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -40,7 +46,26 @@ export default function Premiums() {
       return
     }
 
-    // Fetch premiums from the backend
+    // Fetch user data
+    const fetchUserData = async () => {
+      try {
+        const response = await axios.get("http://localhost:5000/api/v1/auth/get-user", {
+          headers: { Authorization: `Bearer ${token}` },
+        })
+        setUserData({
+          phone: response.data.phone,
+          walletAddress: response.data.walletAddress,
+        })
+      } catch (err) {
+        toast.error(
+          axios.isAxiosError(err)
+            ? err.response?.data?.message || "Failed to fetch user data"
+            : "Failed to fetch user data"
+        )
+      }
+    }
+
+    // Fetch premiums
     const fetchPremiums = async () => {
       try {
         const response = await axios.get("http://localhost:5000/api/v1/policies/get-premiums", {
@@ -48,14 +73,15 @@ export default function Premiums() {
         })
         setPremiums(response.data.premiums)
       } catch (err) {
-        if (axios.isAxiosError(err)) {
-          setError(err.response?.data?.message || "Failed to fetch premiums")
-        } else {
-          setError("Failed to fetch premiums")
-        }
+        toast.error(
+          axios.isAxiosError(err)
+            ? err.response?.data?.message || "Failed to fetch premiums"
+            : "Failed to fetch premiums"
+        )
       }
     }
 
+    fetchUserData()
     fetchPremiums()
   }, [router])
 
@@ -64,11 +90,11 @@ export default function Premiums() {
       case "daily":
         return Math.ceil(basePrice / 7) + 2 - 9
       case "weekly":
-        return basePrice 
+        return basePrice
       case "monthly":
-        return Math.ceil(basePrice * 4 * 0.95) 
+        return Math.ceil(basePrice * 4 * 0.95)
       case "annually":
-        return Math.ceil(basePrice * 52 * 0.8) 
+        return Math.ceil(basePrice * 52 * 0.8)
       default:
         return basePrice
     }
@@ -87,14 +113,39 @@ export default function Premiums() {
     router.push("/purchase")
   }
 
+  // Format wallet address for display (e.g., 0x1234...5678)
+  const formatWalletAddress = (address: string | null) => {
+    if (!address) return "No wallet address"
+    return `${address.slice(0, 6)}...${address.slice(-4)}`
+  }
+
   return (
     <div className="mobile-container">
+      <Toaster richColors position="top-center" />
       <div className="glow-effect glow-yellow"></div>
       <div className="glow-effect glow-purple"></div>
 
       <div className="mobile-screen">
-        <div className="flex items-center justify-between mb-4 sticky top-0 bg-gray-950 z-10 py-4">
-          <h1 className="text-2xl font-bold">Hima Insurance</h1>
+        <div className="flex items-center justify-between mb-4 sticky top-0 bg-gray-950 z-10 py-3 px-4 rounded-md shadow-sm border border-gray-800">
+          <div className="flex flex-col">
+            <h1 className="text-lg font-bold">
+              Welcome, {userData?.phone || "User"}
+            </h1>
+            <p className="text-gray-400 text-primary text-xs mt-1 font-mono">
+              {userData?.walletAddress ? (
+                <a
+                  href={`https://alfajores-blockscout.celo-testnet.org/address/${userData.walletAddress}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:underline hover:text-gray-200 transition-colors"
+                >
+                  {formatWalletAddress(userData.walletAddress)}
+                </a>
+              ) : (
+                "No wallet address"
+              )}
+            </p>
+          </div>
           <UserAvatar />
         </div>
 
@@ -121,9 +172,7 @@ export default function Premiums() {
               </Tabs>
             </div>
 
-            {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
-
-            {premiums.length === 0 && !error && (
+            {premiums.length === 0 && !userData && (
               <p className="text-gray-400 text-sm mb-4">Loading premiums...</p>
             )}
 
